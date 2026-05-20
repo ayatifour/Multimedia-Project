@@ -1,0 +1,55 @@
+def motion_estimation(current_block, ref_frame, block_x, block_y, search_window=8):
+    h, w = ref_frame.shape
+
+    LDSP = [(0, 0), (0, -2), (2, 0), (0, 2), (-2, 0)]
+
+    SDSP = [(0, 0), (0, -1), (1, 0), (0, 1), (-1, 0)]
+
+    def compute_mse(dx, dy):
+        ref_x = block_x + dx
+        ref_y = block_y + dy
+
+        if ref_x < 0 or ref_y < 0 or ref_x + 16 > w or ref_y + 16 > h:
+            return float('inf')
+
+        ref_block = ref_frame[ref_y:ref_y+16, ref_x:ref_x+16]
+        return np.mean((current_block.astype(np.float32) - ref_block.astype(np.float32)) ** 2)
+
+    best_dx, best_dy = 0, 0
+    best_mse = compute_mse(0, 0)
+
+    while True:
+        improved = False
+
+        for dx, dy in LDSP:
+            cand_dx = best_dx + dx
+            cand_dy = best_dy + dy
+
+            mse = compute_mse(cand_dx, cand_dy)
+
+            if mse < best_mse:
+                best_mse = mse
+                best_dx, best_dy = cand_dx, cand_dy
+                improved = True
+
+        if not improved:
+            break
+
+    while True:
+        improved = False
+
+        for dx, dy in SDSP:
+            cand_dx = best_dx + dx
+            cand_dy = best_dy + dy
+
+            mse = compute_mse(cand_dx, cand_dy)
+
+            if mse < best_mse:
+                best_mse = mse
+                best_dx, best_dy = cand_dx, cand_dy
+                improved = True
+
+        if not improved:
+            break
+
+    return best_dx, best_dy
